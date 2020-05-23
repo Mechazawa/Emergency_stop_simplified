@@ -1,6 +1,6 @@
 # Emergency stop simplified
 
-This plugin reacts to a switch or button, if triggered (switch open) it issues **M112** command to printer.
+This plugin reacts to a switch or button, if triggered (switch open or closed, based on configuration) it issues **M112** command to printer.
 
 Let's check some features:
 * info pop-up when plugin hasn't been configured

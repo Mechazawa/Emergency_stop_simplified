@@ -16,17 +16,21 @@
         </div>
         <label class="control-label">{{ _('Button is connected to:') }}</label>
         <div class="controls" data-toggle="tooltip"
-             title="{{ _('Specify how the button is connected. One end of the button must be wired to ground or 3.3 V. Button is triggered when open.') }}">
+             title="{{ _('Specify how the button is connected. One end of the button must be wired to ground or 3.3 V.') }}">
             <select class="select-mini" data-bind="value: settings.plugins.emergencystopsimplified.switch">
                 <option value=0>{{ _('Ground') }}</option>
                 <option value=1>{{ _('3.3V') }}</option>
             </select>
         </div>
-        <div class="alert-info wy-alert-warning marginTop">
-            <span class="icon-info-sign"/>
-            <span class="octoFontFamily iconIndent">Button is triggered when open.</span>
+        <label class="control-label">{{ _('Emergency stoped is triggered when:') }}</label>
+        <div class="controls" data-toggle="tooltip"
+             title="{{ _('Trigger when') }}">
+            <select class="select-mini" data-bind="value: settings.plugins.emergencystopsimplified.triggerWhenOpen">
+                <option value=1>{{ _('Button opened') }}</option>
+                <option value=0>{{ _('Button closed') }}</option>
+            </select>
         </div>
-        <div class="alert-danger">
+        <div class="alert-danger marginTop">
             <span class="icon-warning-sign"/>
             <span class="octoFontFamily iconIndent">Warning! Never connect the button to 5V! 5V could destroy GPIO of your Raspberry Pi.</span>
         </div>

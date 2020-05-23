@@ -27,6 +27,10 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
     def switch(self):
         return int(self._settings.get(["switch"]))
 
+    @property
+    def triggerWhenOpen(self):
+        return int(self._settings.get(["triggerWhenOpen"]))
+
     # AssetPlugin hook
     def get_assets(self):
         return dict(js=["js/emergencystopsimplified.js"], css=["css/emergencystopsimplified.css"])
@@ -81,7 +85,8 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
         return self.pin != -1
 
     def emergency_stop_triggered(self):
-        return self.pin_initialized and self.sensor_enabled() and GPIO.input(self.pin) != self.switch
+        triggered = (GPIO.input(self.pin) != self.switch) if self.triggerWhenOpen else (GPIO.input(self.pin) == self.switch)
+        return self.pin_initialized and self.sensor_enabled() and triggered
 
     def on_event(self, event, payload):
         if event is Events.CONNECTED:
