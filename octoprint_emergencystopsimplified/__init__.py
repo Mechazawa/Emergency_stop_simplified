@@ -16,7 +16,7 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
 
     def initialize(self):
         GPIO.setwarnings(False)  # Disable GPIO warnings
-        self.estop_sent = False
+        self.send_gcode = False
         self.pin_initialized = False
 
     @property
@@ -26,6 +26,10 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
     @property
     def switch(self):
         return int(self._settings.get(["switch"]))
+
+    @property
+    def action(self):
+        return int(self._settings.get(["action"]))
 
     # AssetPlugin hook
     def get_assets(self):
@@ -39,7 +43,8 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
     def get_settings_defaults(self):
         return dict(
             pin=-1,  # Default is -1
-            switch=0
+            switch=0,
+            action=0
         )
 
     def on_after_startup(self):
@@ -55,7 +60,7 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
     def _setup_button(self):
         if self.sensor_enabled():
             self._logger.info("Setting up button.")
-            self._logger.info("Using Board Mode")
+            self._logger.info("Using BCM Mode")
             GPIO.setmode(GPIO.BCM)
             self._logger.info("Emergency Stop button active on GPIO Pin [%s]" % self.pin)
             if self.switch is 0:
@@ -67,48 +72,46 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
             GPIO.add_event_detect(
                 self.pin, GPIO.BOTH,
                 callback=self.button_callback,
-                bouncetime=1
+                bouncetime=100
             )
             self.pin_initialized = True
         else:
             self._logger.info("Pin not configured, won't work unless configured!")
 
     def sending_gcode(self, comm_instance, phase, cmd, cmd_type, gcode, subcode=None, tags=None, *args, **kwargs):
-        if self.emergency_stop_triggered():
-            self.send_emergency_stop()
+        if self.send_gcode:
+            self.send_M112()
 
     def sensor_enabled(self):
         return self.pin != -1
 
-    def emergency_stop_triggered(self):
-        return self.pin_initialized and self.sensor_enabled() and GPIO.input(self.pin) != self.switch
-
     def on_event(self, event, payload):
-        if event is Events.CONNECTED:
-            self.estop_sent = False
-        elif event is Events.DISCONNECTED:
-            self.estop_sent = True
+        if event is Events.DISCONNECTED:
+            self.send_gcode = False
 
         if not self.sensor_enabled():
             if event is Events.USER_LOGGED_IN:
-                self._plugin_manager.send_plugin_message(self._identifier, dict(type="info", autoClose=True, msg="Don' forget to configure this plugin."))
+                self._plugin_manager.send_plugin_message(self._identifier, dict(type="info", autoClose=True, msg="Don't forget to configure this plugin."))
             elif event is Events.PRINT_STARTED:
                 self._plugin_manager.send_plugin_message(self._identifier, dict(type="info", autoClose=True, msg="You may have forgotten to configure this plugin."))
 
     def button_callback(self, _):
         self._logger.info("Emergency stop button was triggered")
-        if self.emergency_stop_triggered():
-            self.send_emergency_stop()
-        else:
-            self.estop_sent = False
 
-    def send_emergency_stop(self):
-        if self.estop_sent:
-            return
+        state = self._printer.get_state_id()
 
-        self._logger.info("Sending emergency stop GCODE")
+        if self.pin_initialized and self.sensor_enabled() and \
+           GPIO.input(self.pin) != self.switch and state in ['PRINTING', 'PAUSED']:
+            if self.action == 0:
+                self.send_gcode = True
+                self.send_M112()
+            elif self.action == 1:
+                self._logger.info("Cancelling print")
+                self._printer.cancel_print()
+
+    def send_M112(self):
+        self._logger.info("Sending emergency stop GCODE M112")
         self._printer.commands("M112")
-        self.estop_sent = True
 
 
     def get_update_information(self):

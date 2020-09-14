@@ -10,6 +10,7 @@
                    data-bind="value: settings.plugins.emergencystopsimplified.pin">
         </div>
     </div>
+
     <div class="control-group">
         <div class="marginBot">
             <b>Input terminal of the button (switch) needs to be connected to ground or 3.3 V</b>
@@ -33,6 +34,20 @@
         <div style="font-size: 11px">
             For more information click <a
                 href="https://github.com/Mechazawa/Emergency_stop_simplified">here</a>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <div class="marginBot">
+            <b>{{ _('Which action to perform on button press') }}</b>
+        </div>
+        <label class="control-label">{{ _('Action to perform:') }}</label>
+        <div class="controls" data-toggle="tooltip"
+             title="{{ _('Gcode M112 shuts down the machine, turns off all the steppers and heaters, and if possible, turns off the power supply. A reset is required to return to operational mode.') }}">
+            <select class="select-mini" data-bind="value: settings.plugins.emergencystopsimplified.action">
+                <option value=0>{{ _('M112') }}</option>
+                <option value=1>{{ _('Cancel print') }}</option>
+            </select>
         </div>
     </div>
 </form>
