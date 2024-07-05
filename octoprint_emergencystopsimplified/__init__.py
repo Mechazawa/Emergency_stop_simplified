@@ -5,7 +5,7 @@ import octoprint.plugin
 import re
 from octoprint.events import Events
 from time import sleep
-import RPi.GPIO as GPIO
+from gpiozero import Button
 
 
 class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
@@ -13,9 +13,11 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
                                        octoprint.plugin.TemplatePlugin,
                                        octoprint.plugin.SettingsPlugin,
                                        octoprint.plugin.AssetPlugin):
+    
+    def __init__(self):
+        self.button = None
 
     def initialize(self):
-        GPIO.setwarnings(False)  # Disable GPIO warnings
         self.estop_sent = False
         self.pin_initialized = False
 
@@ -47,28 +49,21 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
         self._setup_button()
 
     def on_settings_save(self, data):
-        if self.sensor_enabled() and self.pin_initialized:
-            GPIO.remove_event_detect(self.pin)
         octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
         self._setup_button()
 
     def _setup_button(self):
         if self.sensor_enabled():
             self._logger.info("Setting up button.")
-            self._logger.info("Using Board Mode")
-            GPIO.setmode(GPIO.BCM)
             self._logger.info("Emergency Stop button active on GPIO Pin [%s]" % self.pin)
-            if self.switch is 0:
-                GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            else:
-                GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-            GPIO.remove_event_detect(self.pin)
-            GPIO.add_event_detect(
-                self.pin, GPIO.BOTH,
-                callback=self.button_callback,
-                bouncetime=1
-            )
+            if self.button is not None:
+                self.button.close()
+
+            self.button = Button(self.pin, pull_up=self.switch is 0, bounce_time=1)
+
+            self.button.when_pressed = self.button_callback
+            
             self.pin_initialized = True
         else:
             self._logger.info("Pin not configured, won't work unless configured!")
@@ -81,7 +76,7 @@ class Emergency_stop_simplifiedPlugin(octoprint.plugin.StartupPlugin,
         return self.pin != -1
 
     def emergency_stop_triggered(self):
-        return self.pin_initialized and self.sensor_enabled() and GPIO.input(self.pin) != self.switch
+        return self.pin_initialized and self.sensor_enabled() and self.button is not None and self.button.value != self.switch
 
     def on_event(self, event, payload):
         if event is Events.CONNECTED:
@@ -142,12 +137,6 @@ __plugin_name__ = "Emergency Stop Simplified"
 __plugin_version__ = "0.1.1"
 
 def __plugin_check__():
-    try:
-        import RPi.GPIO as GPIO
-        if GPIO.VERSION < "0.6":  # Need at least 0.6 for edge detection
-            return False
-    except ImportError:
-        return False
     return True
 
 def __plugin_load__():
